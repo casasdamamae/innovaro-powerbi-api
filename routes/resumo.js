@@ -3,7 +3,7 @@ import express from "express";
 import { obterDashboard } from "../database/dashboardRepository.js";
 import { obterVendasHora } from "../database/horaRepository.js";
 import { obterLojas, listarLojas } from "../database/lojasRepository.js";
-import { obterSetores } from "../database/setoresRepository.js";
+import { obterSetores, listarSetores } from "../database/setoresRepository.js";
 import { obterVendedores } from "../database/vendedoresRepository.js";
 import { obterProdutos } from "../database/produtosRepository.js";
 import {
@@ -53,6 +53,7 @@ if (
 }
         let loja = req.query.loja || "TODAS";
         const fornecedor = req.query.fornecedor || "TODOS";
+        const setor = req.query.setor || "TODOS";
 
         if (req.usuario.nivel !== "ADMIN") {
 
@@ -88,7 +89,7 @@ if (
         ] = await Promise.all([
 
 
-            obterDashboard(inicio, fim, loja, fornecedor),
+            obterDashboard(inicio, fim, loja, fornecedor, setor),
             obterMetaDashboard(
 
                inicio,
@@ -96,14 +97,14 @@ if (
                loja
 
             ),
-            obterVendasHora(inicio, fim, loja, fornecedor),
-            obterLojas(inicio, fim, loja, fornecedor),
+            obterVendasHora(inicio, fim, loja, fornecedor, setor),
+            obterLojas(inicio, fim, loja, fornecedor, setor),
             obterCnpjs(inicio, fim, loja, fornecedor),
-            obterSetores(inicio, fim, loja, fornecedor),
-            obterVendedores(inicio, fim, loja, fornecedor),
-            obterProdutos(inicio, fim, loja, fornecedor),
-            obterProdutosQuantidade(inicio, fim, loja, fornecedor),
-            obterFornecedores(inicio, fim, loja, fornecedor),
+            obterSetores(inicio, fim, loja, fornecedor, setor),
+            obterVendedores(inicio, fim, loja, fornecedor, setor),
+            obterProdutos(inicio, fim, loja, fornecedor, setor),
+            obterProdutosQuantidade(inicio, fim, loja, fornecedor, setor),
+            obterFornecedores(inicio, fim, loja, fornecedor, setor),
             obterStatus()
 
         ]);
@@ -116,7 +117,9 @@ if (
 
     loja,
 
-    fornecedor
+    fornecedor,
+
+    setor
 
 );
 
@@ -325,6 +328,26 @@ router.get("/fornecedores", auth, async (req, res) => {
         const fornecedores = await listarFornecedores();
 
         res.json(fornecedores);
+
+    } catch (erro) {
+
+        res.status(500).json({
+
+            erro: erro.message
+
+        });
+
+    }
+
+});
+
+router.get("/setores", auth, async (req, res) => {
+
+    try {
+
+        const setores = await listarSetores();
+
+        res.json(setores);
 
     } catch (erro) {
 

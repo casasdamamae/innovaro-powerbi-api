@@ -1,13 +1,15 @@
 import db from "./database.js";
 import { montarFiltroLoja } from "./filtroLoja.js";
 import { montarFiltroFornecedor } from "./filtroFornecedor.js";
+import { montarFiltroSetor } from "./filtroSetor.js";
 
-export function obterVendasHora(inicio, fim, loja, fornecedor) {
+export function obterVendasHora(inicio, fim, loja, fornecedor, setor) {
 
     return new Promise((resolve, reject) => {
 
         const filtro = montarFiltroLoja(loja);
         const filtroFornecedor = montarFiltroFornecedor(fornecedor);
+        const filtroSetor = montarFiltroSetor(setor);
 
         const sql = `
 
@@ -27,6 +29,7 @@ export function obterVendasHora(inicio, fim, loja, fornecedor) {
 
             ${filtro.sql}
             ${filtroFornecedor.sql}
+            ${filtroSetor.sql}
 
             GROUP BY hora_venda
 
@@ -43,7 +46,8 @@ export function obterVendasHora(inicio, fim, loja, fornecedor) {
                 inicio,
                 fim,
                 ...filtro.params,
-                ...filtroFornecedor.params
+                ...filtroFornecedor.params,
+                ...filtroSetor.params
 
             ],
 
