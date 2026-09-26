@@ -130,7 +130,7 @@ export function listarLojas() {
 
     return Promise.resolve([
 
-        { id: "TODAS", nome: "Todas as lojas" },
+        { id: "TODAS", nome: "Todas as Lojas" },
         { id: "SAO_BERNARDO", nome: "Casa da Mamãe São Bernardo" },
         { id: "MAUA", nome: "Casa da Mamãe Mauá" },
         { id: "SANTO_ANDRE", nome: "Casa da Mamãe Santo André" },

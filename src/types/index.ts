@@ -24,6 +24,21 @@ export interface UsuarioPublico {
   ativo: number;
 }
 
+export interface PaginaUsuarios {
+  dados: UsuarioPublico[];
+  pagina: number;
+  limite: number;
+  total: number;
+  totalPaginas: number;
+}
+
+export interface AtualizarUsuarioInput {
+  ativo?: number;
+  senha?: string;
+  loja?: string;
+  nivel?: string;
+}
+
 export interface Venda {
   codigo_venda: number;
   codigo_produto: number;

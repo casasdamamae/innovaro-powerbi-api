@@ -1,9 +1,10 @@
 import db from "../config/database.js";
 import bcrypt from "bcryptjs";
-import type { Usuario, UsuarioPublico } from "../types/index.js";
+import type { Usuario, UsuarioPublico, PaginaUsuarios, AtualizarUsuarioInput } from "../types/index.js";
 
 const NIVEIS_VALIDOS = new Set(["ADMIN", "CONSULTA"]);
 const SENHA_MINIMA = 6;
+const LIMITE_PAGINA = 15;
 
 export function buscarUsuario(usuario: string): Promise<Usuario | undefined> {
   return new Promise((resolve, reject) => {
@@ -22,18 +23,40 @@ export function buscarUsuario(usuario: string): Promise<Usuario | undefined> {
   });
 }
 
-export function listarUsuarios(): Promise<UsuarioPublico[]> {
+export function listarUsuarios(pagina: number): Promise<PaginaUsuarios> {
+  const paginaNorm = Math.max(1, Math.floor(pagina) || 1);
+  const offset = (paginaNorm - 1) * LIMITE_PAGINA;
+
   return new Promise((resolve, reject) => {
-    db.all(
-      `
-      SELECT id, usuario, nivel, loja, ativo
-      FROM usuarios
-      ORDER BY usuario
-      `,
+    db.get(
+      `SELECT COUNT(*) AS total FROM usuarios`,
       [],
-      (err, rows: UsuarioPublico[]) => {
-        if (err) return reject(err);
-        resolve(rows || []);
+      (countErr, countRow: { total: number } | undefined) => {
+        if (countErr) return reject(countErr);
+
+        const total = Number(countRow?.total || 0);
+        const totalPaginas = total === 0 ? 0 : Math.ceil(total / LIMITE_PAGINA);
+
+        db.all(
+          `
+          SELECT id, usuario, nivel, loja, ativo
+          FROM usuarios
+          ORDER BY usuario
+          LIMIT ? OFFSET ?
+          `,
+          [LIMITE_PAGINA, offset],
+          (err, rows: UsuarioPublico[]) => {
+            if (err) return reject(err);
+
+            resolve({
+              dados: rows || [],
+              pagina: paginaNorm,
+              limite: LIMITE_PAGINA,
+              total,
+              totalPaginas,
+            });
+          }
+        );
       }
     );
   });
@@ -97,11 +120,56 @@ export async function alterarSenha(id: number | string, senha: string): Promise<
   });
 }
 
-export function alterarStatus(id: number | string, ativo: number): Promise<number> {
+export async function atualizarUsuario(
+  id: number | string,
+  campos: AtualizarUsuarioInput
+): Promise<number> {
+  const sets: string[] = [];
+  const params: unknown[] = [];
+
+  if (campos.ativo !== undefined) {
+    if (campos.ativo !== 0 && campos.ativo !== 1) {
+      throw new Error("Ativo inválido. Use 0 ou 1.");
+    }
+    sets.push("ativo = ?");
+    params.push(campos.ativo);
+  }
+
+  if (campos.senha !== undefined) {
+    if (!campos.senha || campos.senha.length < SENHA_MINIMA) {
+      throw new Error(`Senha deve ter pelo menos ${SENHA_MINIMA} caracteres.`);
+    }
+    const hash = await bcrypt.hash(campos.senha, 10);
+    sets.push("senha = ?");
+    params.push(hash);
+  }
+
+  if (campos.loja !== undefined) {
+    if (!campos.loja || typeof campos.loja !== "string" || !campos.loja.trim()) {
+      throw new Error("Loja inválida.");
+    }
+    sets.push("loja = ?");
+    params.push(campos.loja.trim());
+  }
+
+  if (campos.nivel !== undefined) {
+    if (!NIVEIS_VALIDOS.has(campos.nivel)) {
+      throw new Error("Nível inválido. Use ADMIN ou CONSULTA.");
+    }
+    sets.push("nivel = ?");
+    params.push(campos.nivel);
+  }
+
+  if (sets.length === 0) {
+    throw new Error("Informe ao menos um campo para atualizar.");
+  }
+
+  params.push(id);
+
   return new Promise((resolve, reject) => {
     db.run(
-      `UPDATE usuarios SET ativo = ? WHERE id = ?`,
-      [ativo, id],
+      `UPDATE usuarios SET ${sets.join(", ")} WHERE id = ?`,
+      params,
       function (this: { changes: number }, err: Error | null) {
         if (err) return reject(err);
         resolve(this.changes);
