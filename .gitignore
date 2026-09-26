@@ -4,3 +4,5 @@ database/banco.db
 database/banco.db-shm
 database/banco.db-wal
 logs
+dist
+*.tsbuildinfo
