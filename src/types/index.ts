@@ -32,6 +32,20 @@ export interface PaginaUsuarios {
   totalPaginas: number;
 }
 
+export interface Vendedor {
+  codigo_vendedor: number;
+  nome_vendedor: string;
+  lojas: number[];
+}
+
+export interface PaginaVendedores {
+  dados: Vendedor[];
+  pagina: number;
+  limite: number;
+  total: number;
+  totalPaginas: number;
+}
+
 export interface AtualizarUsuarioInput {
   ativo?: number;
   senha?: string;

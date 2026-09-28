@@ -6,7 +6,7 @@ import { obterLojas, listarLojas } from "../repositories/lojasRepository.js";
 import { obterSetores } from "../repositories/setoresRepository.js";
 import { obterProdutos } from "../repositories/produtosRepository.js";
 import { obterFornecedores } from "../repositories/fornecedoresRepository.js";
-import { listarVendedores } from "../repositories/vendedoresRepository.js";
+import { listarVendedoresCatalogo } from "../catalogo/vendedoresCatalogo.js";
 import { obterStatus } from "../repositories/statusRepository.js";
 import {
   listarMetas,
@@ -128,8 +128,16 @@ export async function vendedores(req: Request, res: Response): Promise<void> {
       loja = req.usuario.loja;
     }
 
-    const dados = await listarVendedores(loja);
-    res.json(dados);
+    const pagina = Number(asString(req.query.pagina));
+    const limite = Number(asString(req.query.limite));
+
+    res.json(
+      listarVendedoresCatalogo({
+        loja,
+        pagina: Number.isFinite(pagina) ? pagina : undefined,
+        limite: Number.isFinite(limite) ? limite : undefined,
+      })
+    );
   } catch (erro) {
     res.status(500).json({ erro: mensagem(erro) });
   }
