@@ -1,6 +1,7 @@
 import { buscarVendas } from "./innovaro.js";
 import { substituirVendasDoDia } from "../repositories/vendasRepository.js";
 import { salvarLog } from "../repositories/logRepository.js";
+import { recarregarCatalogo } from "../catalogo/vendedoresCatalogo.js";
 
 export async function sincronizar(data: string | null = null): Promise<void> {
   const dia = data || new Date().toISOString().split("T")[0];
@@ -44,6 +45,7 @@ export async function sincronizar(data: string | null = null): Promise<void> {
   console.log("Substituindo vendas do dia (transação)...");
 
   await substituirVendasDoDia(dia, resultado.vendas);
+  await recarregarCatalogo();
 
   await salvarLog(dia, resultado.registros, resultado.tempo, "OK", "");
 
