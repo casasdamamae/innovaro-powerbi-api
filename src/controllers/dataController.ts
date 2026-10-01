@@ -22,6 +22,84 @@ function mensagem(erro: unknown): string {
   return erro instanceof Error ? erro.message : "Erro interno";
 }
 
+function numeroNaoNegativo(valor: unknown) {
+  const numero = Number(valor);
+  return Number.isFinite(numero) && numero >= 0;
+}
+
+function validarPeriodoMeta(ano: unknown, mes: unknown): string | null {
+  const anoNum = Number(ano);
+  const mesNum = Number(mes);
+
+  if (
+    !Number.isInteger(anoNum) ||
+    !Number.isInteger(mesNum) ||
+    mesNum < 1 ||
+    mesNum > 12
+  ) {
+    return "Ano e mês devem ser inteiros válidos.";
+  }
+
+  const hoje = new Date();
+  const anoAtual = hoje.getFullYear();
+  const mesAtual = hoje.getMonth() + 1;
+
+  if (anoNum < anoAtual || (anoNum === anoAtual && mesNum < mesAtual)) {
+    return "Não é permitido alterar metas de meses anteriores.";
+  }
+
+  return null;
+}
+
+function validarMetasMensais(metas: unknown): string | null {
+  if (!Array.isArray(metas)) return "Dados de metas inválidos.";
+
+  for (const item of metas) {
+    const meta = item as {
+      ano?: unknown;
+      mes?: unknown;
+      meta_mensal?: unknown;
+      feriados?: unknown;
+    };
+    const periodo = validarPeriodoMeta(meta.ano, meta.mes);
+
+    if (periodo) {
+      return periodo;
+    }
+
+    const feriados = Number(meta.feriados);
+
+    if (!numeroNaoNegativo(meta.meta_mensal)) {
+      return "A meta mensal não pode ser negativa.";
+    }
+
+    if (!Number.isFinite(feriados) || feriados < 0 || !Number.isInteger(feriados)) {
+      return "Feriados deve ser um inteiro maior ou igual a zero.";
+    }
+  }
+
+  return null;
+}
+
+function validarMetasVendedores(metas: unknown): string | null {
+  if (!Array.isArray(metas)) return "Dados de metas inválidos.";
+
+  for (const item of metas) {
+    const meta = item as { ano?: unknown; mes?: unknown; meta?: unknown };
+    const periodo = validarPeriodoMeta(meta.ano, meta.mes);
+
+    if (periodo) {
+      return periodo;
+    }
+
+    if (!numeroNaoNegativo(meta.meta)) {
+      return "A meta mensal não pode ser negativa.";
+    }
+  }
+
+  return null;
+}
+
 function asString(value: unknown): string | undefined {
   if (typeof value === "string") return value;
   if (Array.isArray(value) && typeof value[0] === "string") return value[0];
@@ -170,6 +248,13 @@ export async function getMetas(req: Request, res: Response): Promise<void> {
 
 export async function postMeta(req: Request, res: Response): Promise<void> {
   try {
+    const erroValidacao = validarMetasMensais([req.body]);
+
+    if (erroValidacao) {
+      res.status(400).json({ erro: erroValidacao });
+      return;
+    }
+
     await salvarMeta(req.body);
     res.json({ sucesso: true });
   } catch (erro) {
@@ -179,6 +264,13 @@ export async function postMeta(req: Request, res: Response): Promise<void> {
 
 export async function postMetas(req: Request, res: Response): Promise<void> {
   try {
+    const erroValidacao = validarMetasMensais(req.body);
+
+    if (erroValidacao) {
+      res.status(400).json({ erro: erroValidacao });
+      return;
+    }
+
     await salvarMetas(req.body);
     res.json({ sucesso: true });
   } catch (erro) {
@@ -212,6 +304,13 @@ export async function postMetasVendedores(
   res: Response
 ): Promise<void> {
   try {
+    const erroValidacao = validarMetasVendedores(req.body);
+
+    if (erroValidacao) {
+      res.status(400).json({ erro: erroValidacao });
+      return;
+    }
+
     const lista = req.body as unknown[];
 
     for (const meta of lista) {
