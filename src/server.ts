@@ -66,7 +66,7 @@ function iniciarBackfill(): void {
 
   const filho = spawn(
     process.execPath,
-    [script, "--inicio=2025-01-01", "--fim=2026-05-03"],
+    [script, "--inicio=2025-09-01", "--fim=2026-05-03"],
     { stdio: "inherit" }
   );
 
