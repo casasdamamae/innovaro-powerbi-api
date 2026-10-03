@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 const bancoOriginal = path.resolve(__dirname, "../../database/banco.db");
 
-const caminhoBanco = env.dbPath ? env.dbPath : bancoOriginal;
+export const caminhoBanco = env.dbPath ? env.dbPath : bancoOriginal;
 
 if (env.dbPath) {
   const pasta = path.dirname(caminhoBanco);
