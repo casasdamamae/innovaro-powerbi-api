@@ -1,3 +1,6 @@
+import path from "path";
+import { spawn } from "child_process";
+import { fileURLToPath } from "url";
 import { env } from "./config/env.js";
 import { connectRedis } from "./config/redis.js";
 import { criarTabelas } from "./config/schema.js";
@@ -63,6 +66,19 @@ async function bootstrap(): Promise<void> {
     console.log("");
 
     void loopSincronizacao();
+
+    if (process.env.RENDER === "true") {
+      const script = path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        "scripts/backfill-2025.js"
+      );
+
+      spawn(
+        process.execPath,
+        [script, "--inicio=2025-01-01", "--fim=2026-05-03"],
+        { stdio: "inherit" }
+      );
+    }
   });
 }
 
