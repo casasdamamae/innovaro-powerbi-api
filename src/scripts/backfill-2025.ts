@@ -109,21 +109,24 @@ function mensagemErro(erro: unknown): string {
   return "erro desconhecido";
 }
 
-function processoVivo(pid: number): boolean {
+function comandoDoPid(pid: number): string | null {
   try {
-    process.kill(pid, 0);
-    return true;
+    return fs.readFileSync(`/proc/${pid}/cmdline`, "utf8").replace(/\0/g, " ");
   } catch {
-    return false;
+    return null;
   }
 }
 
 function adquirirLock(): void {
   if (fs.existsSync(LOCK_PATH)) {
     const pid = Number(fs.readFileSync(LOCK_PATH, "utf8").trim());
-    if (Number.isInteger(pid) && pid > 0 && processoVivo(pid)) {
+    const comando = Number.isInteger(pid) && pid > 0 ? comandoDoPid(pid) : null;
+
+    if (comando?.includes("backfill-2025")) {
       throw new Error(`Outra instância em execução (PID ${pid}).`);
     }
+
+    fs.unlinkSync(LOCK_PATH);
   }
 
   fs.writeFileSync(LOCK_PATH, String(process.pid));
