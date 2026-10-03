@@ -40,7 +40,7 @@ function uso(): string {
 
 function lerOpcoes(argv: string[]): Opcoes {
   const opcoes: Opcoes = {
-    inicio: "2025-01-01",
+    inicio: "2025-09-01",
     fim: "2026-05-03",
     dryRun: false,
     forcar: false,
