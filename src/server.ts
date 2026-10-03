@@ -1,6 +1,3 @@
-import path from "path";
-import { spawn } from "child_process";
-import { fileURLToPath } from "url";
 import { env } from "./config/env.js";
 import { connectRedis } from "./config/redis.js";
 import { criarTabelas } from "./config/schema.js";
@@ -10,10 +7,8 @@ import app from "./app.js";
 
 const SYNC_INTERVAL_MS = 10 * 60 * 1000;
 const SYNC_INITIAL_DELAY_MS = 30 * 1000;
-const BACKFILL_RETOMADA_MS = 60 * 1000;
 
 let sincronizando = false;
-let backfillEmExecucao = false;
 
 async function executarSincronizacao(): Promise<void> {
   if (sincronizando) {
@@ -52,49 +47,6 @@ async function loopSincronizacao(): Promise<void> {
   }
 }
 
-function iniciarBackfill(): void {
-  if (process.env.RENDER !== "true" || backfillEmExecucao) {
-    return;
-  }
-
-  const script = path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "scripts/backfill-2025.js"
-  );
-
-  backfillEmExecucao = true;
-
-  const filho = spawn(
-    process.execPath,
-    [script, "--inicio=2025-09-01", "--fim=2026-05-03"],
-    { stdio: "inherit" }
-  );
-
-  let encerrou = false;
-
-  const aoEncerrar = (codigo: number | null) => {
-    if (encerrou) return;
-    encerrou = true;
-    backfillEmExecucao = false;
-
-    if (codigo === 0) {
-      console.log("Backfill concluído.");
-      return;
-    }
-
-    console.log(
-      `Backfill encerrou (código ${codigo ?? "null"}). Retomando em 60s.`
-    );
-
-    setTimeout(() => {
-      iniciarBackfill();
-    }, BACKFILL_RETOMADA_MS);
-  };
-
-  filho.on("exit", (codigo) => aoEncerrar(codigo));
-  filho.on("error", () => aoEncerrar(null));
-}
-
 async function bootstrap(): Promise<void> {
   await connectRedis();
   criarTabelas();
@@ -111,7 +63,6 @@ async function bootstrap(): Promise<void> {
     console.log("");
 
     void loopSincronizacao();
-    iniciarBackfill();
   });
 }
 
