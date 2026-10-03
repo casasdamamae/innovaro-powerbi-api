@@ -50,7 +50,6 @@ async function loopSincronizacao(): Promise<void> {
 async function bootstrap(): Promise<void> {
   await connectRedis();
   criarTabelas();
-  await recarregarCatalogo();
 
   app.listen(env.port, () => {
     console.log("");
@@ -62,6 +61,9 @@ async function bootstrap(): Promise<void> {
     console.log("======================================");
     console.log("");
 
+    void recarregarCatalogo().catch((erro) => {
+      console.error("Falha ao carregar catálogo de vendedores:", erro);
+    });
     void loopSincronizacao();
   });
 }
