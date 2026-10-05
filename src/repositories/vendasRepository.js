@@ -1,4 +1,4 @@
-import db from "../config/database.js";
+import db, { dbLeitura } from "../config/database.js";
 
 const INSERT_SQL = `
   INSERT OR IGNORE INTO vendas (
@@ -95,61 +95,103 @@ export function apagarDia(data) {
   });
 }
 
+const LOTE_INSERT = 400;
+
+function cederEventLoop() {
+  return new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+}
+
+function executarLote(stmt, vendas, inicio) {
+  const fim = Math.min(inicio + LOTE_INSERT, vendas.length);
+
+  return new Promise((resolve, reject) => {
+    let pendentes = fim - inicio;
+    if (pendentes === 0) {
+      resolve();
+      return;
+    }
+
+    let falhou = null;
+
+    for (let i = inicio; i < fim; i++) {
+      stmt.run(valoresVenda(vendas[i]), (runErr) => {
+        if (runErr && !falhou) {
+          falhou = runErr;
+        }
+        pendentes -= 1;
+        if (pendentes === 0) {
+          if (falhou) reject(falhou);
+          else resolve();
+        }
+      });
+    }
+  });
+}
+
 /**
  * Apaga o dia e grava as novas vendas na mesma transaction.
  * Se o insert falhar, o delete é revertido (ROLLBACK).
+ * Os inserts vão em lotes para o event loop atender o health check no meio.
  */
 export function substituirVendasDoDia(data, vendas) {
   return new Promise((resolve, reject) => {
-    db.serialize(() => {
-      db.run("BEGIN TRANSACTION", (beginErr) => {
-        if (beginErr) {
-          return reject(beginErr);
-        }
+    db.run("BEGIN TRANSACTION", (beginErr) => {
+      if (beginErr) {
+        reject(beginErr);
+        return;
+      }
 
-        db.run(
-          "DELETE FROM vendas WHERE data_venda = ?",
-          [data],
-          function (deleteErr) {
-            if (deleteErr) {
-              return db.run("ROLLBACK", () => reject(deleteErr));
+      db.run(
+        "DELETE FROM vendas WHERE data_venda = ?",
+        [data],
+        function (deleteErr) {
+          if (deleteErr) {
+            db.run("ROLLBACK", () => reject(deleteErr));
+            return;
+          }
+
+          const stmt = db.prepare(INSERT_SQL);
+
+          const gravar = async () => {
+            for (let i = 0; i < vendas.length; i += LOTE_INSERT) {
+              await executarLote(stmt, vendas, i);
+              await cederEventLoop();
             }
+          };
 
-            const stmt = db.prepare(INSERT_SQL);
-            let failed = false;
-
-            for (const venda of vendas) {
-              stmt.run(valoresVenda(venda), (runErr) => {
-                if (runErr && !failed) {
-                  failed = true;
+          gravar()
+            .then(() => {
+              stmt.finalize((finalizeErr) => {
+                if (finalizeErr) {
+                  db.run("ROLLBACK", () => reject(finalizeErr));
+                  return;
                 }
+
+                db.run("COMMIT", (commitErr) => {
+                  if (commitErr) {
+                    reject(commitErr);
+                    return;
+                  }
+                  resolve();
+                });
               });
-            }
-
-            stmt.finalize((finalizeErr) => {
-              if (finalizeErr || failed) {
-                return db.run("ROLLBACK", () =>
-                  reject(finalizeErr || new Error("Falha ao inserir vendas"))
-                );
-              }
-
-              db.run("COMMIT", (commitErr) => {
-                if (commitErr) {
-                  return reject(commitErr);
-                }
-                resolve();
+            })
+            .catch((erro) => {
+              stmt.finalize(() => {
+                db.run("ROLLBACK", () => reject(erro));
               });
             });
-          }
-        );
-      });
+        }
+      );
     });
   });
 }
 
 export function contarVendas() {
   return new Promise((resolve, reject) => {
-    db.get("SELECT COUNT(*) AS total FROM vendas", [], (err, row) => {
+    dbLeitura.get("SELECT COUNT(*) AS total FROM vendas", [], (err, row) => {
       if (err) {
         return reject(err);
       }
@@ -212,7 +254,7 @@ export function consultarVendas(filtros = {}) {
       parametros.push(limite, (pagina - 1) * limite);
     }
 
-    db.all(sql, parametros, (err, rows) => {
+    dbLeitura.all(sql, parametros, (err, rows) => {
       if (err) {
         return reject(err);
       }

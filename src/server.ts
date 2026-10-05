@@ -1,4 +1,5 @@
 import { env } from "./config/env.js";
+import { prepararBanco } from "./config/database.js";
 import { connectRedis } from "./config/redis.js";
 import { criarTabelas } from "./config/schema.js";
 import { recarregarCatalogo } from "./catalogo/vendedoresCatalogo.js";
@@ -49,6 +50,7 @@ async function loopSincronizacao(): Promise<void> {
 
 async function bootstrap(): Promise<void> {
   await connectRedis();
+  await prepararBanco();
   criarTabelas();
 
   app.listen(env.port, () => {

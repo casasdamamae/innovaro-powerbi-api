@@ -1,4 +1,4 @@
-import db from "../config/database.js";
+import db, { dbLeitura } from "../config/database.js";
 import bcrypt from "bcryptjs";
 import type { Usuario, UsuarioPublico, PaginaUsuarios, AtualizarUsuarioInput } from "../types/index.js";
 
@@ -8,7 +8,7 @@ const LIMITE_PAGINA = 15;
 
 export function buscarUsuario(usuario: string): Promise<Usuario | undefined> {
   return new Promise((resolve, reject) => {
-    db.get(
+    dbLeitura.get(
       `
       SELECT id, usuario, senha, nivel, loja, ativo
       FROM usuarios
@@ -28,7 +28,7 @@ export function listarUsuarios(pagina: number): Promise<PaginaUsuarios> {
   const offset = (paginaNorm - 1) * LIMITE_PAGINA;
 
   return new Promise((resolve, reject) => {
-    db.get(
+    dbLeitura.get(
       `SELECT COUNT(*) AS total FROM usuarios`,
       [],
       (countErr, countRow: { total: number } | undefined) => {
@@ -37,7 +37,7 @@ export function listarUsuarios(pagina: number): Promise<PaginaUsuarios> {
         const total = Number(countRow?.total || 0);
         const totalPaginas = total === 0 ? 0 : Math.ceil(total / LIMITE_PAGINA);
 
-        db.all(
+        dbLeitura.all(
           `
           SELECT id, usuario, nivel, loja, ativo
           FROM usuarios

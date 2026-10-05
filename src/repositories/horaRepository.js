@@ -1,4 +1,4 @@
-import db from "../config/database.js";
+import { dbLeitura as db } from "../config/database.js";
 import { montarFiltroLoja } from "./filtroLoja.js";
 import { montarFiltroFornecedor } from "./filtroFornecedor.js";
 import { montarFiltroSetor } from "./filtroSetor.js";

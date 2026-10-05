@@ -1,10 +1,10 @@
-import db from "../config/database.js";
+import db, { dbLeitura } from "../config/database.js";
 
 export function listarMetas(ano, mes) {
 
     return new Promise((resolve, reject) => {
 
-        db.all(
+        dbLeitura.all(
 
             `
             SELECT *

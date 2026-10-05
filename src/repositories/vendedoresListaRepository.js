@@ -1,4 +1,4 @@
-import db from "../config/database.js";
+import { dbLeitura as db } from "../config/database.js";
 import { montarFiltroLoja } from "./filtroLoja.js";
 
 export function listarVendedores(loja) {

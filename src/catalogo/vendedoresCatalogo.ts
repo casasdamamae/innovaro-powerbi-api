@@ -1,5 +1,4 @@
-import sqlite3 from "sqlite3";
-import { caminhoBanco } from "../config/database.js";
+import { dbLeitura } from "../config/database.js";
 import { LOJAS } from "../repositories/lojasConfig.js";
 import type { PaginaVendedores, Vendedor } from "../types/index.js";
 
@@ -25,20 +24,10 @@ export interface FiltroCatalogoVendedores {
 
 let catalogo = new Map<number, RegistroVendedor>();
 let cargaSeq = 0;
-let leitura: sqlite3.Database | null = null;
-
-function bancoLeitura(): sqlite3.Database {
-  if (!leitura) {
-    leitura = new sqlite3.Database(caminhoBanco);
-    leitura.run("PRAGMA query_only = ON");
-    leitura.run("PRAGMA busy_timeout = 30000");
-  }
-  return leitura;
-}
 
 function consultarLinhas(): Promise<LinhaCatalogo[]> {
   return new Promise((resolve, reject) => {
-    bancoLeitura().all(
+    dbLeitura.all(
       `
       SELECT
         codigo_vendedor,

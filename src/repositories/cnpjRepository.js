@@ -1,4 +1,4 @@
-import db from "../config/database.js";
+import { dbLeitura as db } from "../config/database.js";
 
 export function obterCnpjs(inicio, fim) {
 
