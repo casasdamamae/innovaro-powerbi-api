@@ -20,20 +20,6 @@ import metasVendedoresRouter from "./routes/metasVendedores.js";
 
 const app = express();
 
-app.use((req, res, next) => {
-  const t0 = Date.now();
-  console.log(`→ ${req.method} ${req.originalUrl}`);
-  res.on("finish", () =>
-    console.log(`← ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - t0}ms`)
-  );
-  res.on("close", () => {
-    if (!res.writableFinished) {
-      console.log(`✖ ${req.method} ${req.originalUrl} sem resposta após ${Date.now() - t0}ms`);
-    }
-  });
-  next();
-});
-
 const corsOptions =
   env.corsOrigin === "*"
     ? {}

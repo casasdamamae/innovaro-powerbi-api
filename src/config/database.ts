@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 const bancoOriginal = path.resolve(__dirname, "../../database/banco.db");
 
-export const caminhoBanco = env.dbPath ? env.dbPath : bancoOriginal;
+const caminhoBanco = env.dbPath ? env.dbPath : bancoOriginal;
 
 if (env.dbPath) {
   const pasta = path.dirname(caminhoBanco);
@@ -42,74 +42,19 @@ const db = new sqlite3.Database(caminhoBanco, (err) => {
   }
 
   console.log("✅ Banco SQLite conectado.");
+
+  db.serialize(() => {
+    db.run("PRAGMA journal_mode = WAL;");
+    db.run("PRAGMA synchronous = NORMAL;");
+    db.run("PRAGMA temp_store = MEMORY;");
+    db.run("PRAGMA cache_size = -50000;");
+    db.run("PRAGMA mmap_size = 268435456;");
+    db.run("PRAGMA busy_timeout = 30000;");
+    db.run("PRAGMA foreign_keys = ON;");
+    db.run("PRAGMA optimize;");
+  });
+
+  console.log("🚀 SQLite otimizado.");
 });
-
-export let dbLeitura: sqlite3.Database;
-
-function definirBusyTimeout(banco: sqlite3.Database, ms: number): void {
-  (
-    banco as sqlite3.Database & {
-      configure(option: "busyTimeout", value: number): void;
-    }
-  ).configure("busyTimeout", ms);
-}
-
-function executar(banco: sqlite3.Database, sql: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    banco.run(sql, (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  });
-}
-
-function consultarUm(
-  banco: sqlite3.Database,
-  sql: string
-): Promise<Record<string, unknown>> {
-  return new Promise((resolve, reject) => {
-    banco.get(sql, (err, row: Record<string, unknown> | undefined) => {
-      if (err) reject(err);
-      else resolve(row || {});
-    });
-  });
-}
-
-function abrirLeitura(): Promise<sqlite3.Database> {
-  return new Promise((resolve, reject) => {
-    const leitura = new sqlite3.Database(caminhoBanco, (err) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      definirBusyTimeout(leitura, 30000);
-      leitura.run("PRAGMA query_only = ON", (pragmaErr) => {
-        if (pragmaErr) reject(pragmaErr);
-        else resolve(leitura);
-      });
-    });
-  });
-}
-
-export async function prepararBanco(): Promise<void> {
-  definirBusyTimeout(db, 30000);
-
-  const modo = await consultarUm(db, "PRAGMA journal_mode = WAL");
-  const journal = String(modo.journal_mode || "").toLowerCase();
-  if (journal !== "wal") {
-    throw new Error(`journal_mode ficou ${journal || "desconhecido"}, esperado wal`);
-  }
-
-  await executar(db, "PRAGMA synchronous = NORMAL");
-  await executar(db, "PRAGMA temp_store = MEMORY");
-  await executar(db, "PRAGMA cache_size = -50000");
-  await executar(db, "PRAGMA mmap_size = 268435456");
-  await executar(db, "PRAGMA busy_timeout = 30000");
-  await executar(db, "PRAGMA foreign_keys = ON");
-
-  dbLeitura = await abrirLeitura();
-  console.log("✅ SQLite em WAL. Leitura separada da gravação.");
-}
 
 export default db;

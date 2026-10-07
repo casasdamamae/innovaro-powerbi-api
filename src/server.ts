@@ -1,5 +1,4 @@
 import { env } from "./config/env.js";
-import { prepararBanco } from "./config/database.js";
 import { connectRedis } from "./config/redis.js";
 import { criarTabelas } from "./config/schema.js";
 import { recarregarCatalogo } from "./catalogo/vendedoresCatalogo.js";
@@ -50,8 +49,8 @@ async function loopSincronizacao(): Promise<void> {
 
 async function bootstrap(): Promise<void> {
   await connectRedis();
-  await prepararBanco();
   criarTabelas();
+  await recarregarCatalogo();
 
   app.listen(env.port, () => {
     console.log("");
@@ -63,9 +62,6 @@ async function bootstrap(): Promise<void> {
     console.log("======================================");
     console.log("");
 
-    void recarregarCatalogo().catch((erro) => {
-      console.error("Falha ao carregar catálogo de vendedores:", erro);
-    });
     void loopSincronizacao();
   });
 }

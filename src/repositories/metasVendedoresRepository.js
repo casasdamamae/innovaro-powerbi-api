@@ -1,4 +1,4 @@
-import db, { dbLeitura } from "../config/database.js";
+import db from "../config/database.js";
 
 // =====================================================
 // LISTAR METAS
@@ -47,7 +47,7 @@ export function listarMetasVendedores(ano, mes, loja) {
 
         }
 
-        dbLeitura.all(
+        db.all(
 
             sql,
 

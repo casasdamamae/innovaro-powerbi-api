@@ -35,7 +35,7 @@ export async function buscarVendas(data: string): Promise<ResultadoInnovaro> {
 
     const tempo = Number(((Date.now() - inicio) / 1000).toFixed(1));
     const vendas = (response.data || []) as Venda[];
-    
+    console.log(vendas);
 
     console.log(`✅ API respondeu em ${tempo}s — ${vendas.length} registros`);
 

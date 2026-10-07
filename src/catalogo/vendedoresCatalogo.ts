@@ -1,4 +1,4 @@
-import { dbLeitura } from "../config/database.js";
+import db from "../config/database.js";
 import { LOJAS } from "../repositories/lojasConfig.js";
 import type { PaginaVendedores, Vendedor } from "../types/index.js";
 
@@ -27,7 +27,7 @@ let cargaSeq = 0;
 
 function consultarLinhas(): Promise<LinhaCatalogo[]> {
   return new Promise((resolve, reject) => {
-    dbLeitura.all(
+    db.all(
       `
       SELECT
         codigo_vendedor,

@@ -10,6 +10,7 @@ import {
   obterFornecedores,
   listarFornecedores,
 } from "../repositories/fornecedoresRepository.js";
+import { obterStatus } from "../repositories/statusRepository.js";
 import { obterCnpjs } from "../repositories/cnpjRepository.js";
 import { obterProdutosQuantidade } from "../repositories/produtosQuantidadeRepository.js";
 import { obterMetaDashboard } from "../repositories/metaDashboardRepository.js";
@@ -72,6 +73,7 @@ export async function obterResumoCompleto(
     produtos,
     produtosQuantidade,
     fornecedores,
+    status,
   ] = await Promise.all([
     obterDashboard(inicio, fim, loja, fornecedor, setor),
     obterMetaDashboard(inicio, fim, loja),
@@ -83,6 +85,7 @@ export async function obterResumoCompleto(
     obterProdutos(inicio, fim, loja, fornecedor, setor),
     obterProdutosQuantidade(inicio, fim, loja, fornecedor, setor),
     obterFornecedores(inicio, fim, loja, fornecedor, setor),
+    obterStatus(),
   ]);
 
   const dashboardMeta = await obterDashboard(
@@ -154,7 +157,7 @@ export async function obterResumoCompleto(
     produtos,
     produtosQuantidade,
     fornecedores,
-    status: null,
+    status,
   };
 }
 
