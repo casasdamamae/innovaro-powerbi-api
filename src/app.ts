@@ -17,8 +17,23 @@ import vendedoresRouter from "./routes/vendedores.js";
 import statusRouter from "./routes/status.js";
 import metasRouter from "./routes/metas.js";
 import metasVendedoresRouter from "./routes/metasVendedores.js";
+import comparativoRouter from "./routes/comparativo.js";
 
 const app = express();
+
+app.use((req, res, next) => {
+  const t0 = Date.now();
+  console.log(`→ ${req.method} ${req.originalUrl}`);
+  res.on("finish", () =>
+    console.log(`← ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - t0}ms`)
+  );
+  res.on("close", () => {
+    if (!res.writableFinished) {
+      console.log(`✖ ${req.method} ${req.originalUrl} sem resposta após ${Date.now() - t0}ms`);
+    }
+  });
+  next();
+});
 
 const corsOptions =
   env.corsOrigin === "*"
@@ -52,6 +67,7 @@ app.use("/vendedores", vendedoresRouter);
 app.use("/status", statusRouter);
 app.use("/metas", metasRouter);
 app.use("/metas-vendedores", metasVendedoresRouter);
+app.use("/comparativo", comparativoRouter);
 
 app.use(errorHandler);
 
