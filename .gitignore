@@ -6,3 +6,5 @@ database/banco.db-wal
 logs
 dist
 *.tsbuildinfo
+
+*.md
