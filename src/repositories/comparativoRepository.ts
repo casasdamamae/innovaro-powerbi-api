@@ -43,9 +43,9 @@ export interface AgregadoHora extends MetricasPeriodo {
   hora: number;
 }
 
-export interface AgregadoGrupo extends MetricasPeriodo {
-  codigo_grupo: number;
-  nome_grupo: string;
+export interface AgregadoSubgrupo extends MetricasPeriodo {
+  codigo_subgrupo: number;
+  nome_subgrupo: string;
 }
 
 export interface AgregadoSecao extends MetricasPeriodo {
@@ -68,7 +68,7 @@ export interface AgregadosPeriodo {
   por_loja: AgregadoLoja[];
   por_dia: AgregadoDia[];
   por_hora: AgregadoHora[];
-  por_grupo: AgregadoGrupo[];
+  por_subgrupo: AgregadoSubgrupo[];
   por_secao: AgregadoSecao[];
   por_fornecedor: AgregadoFornecedor[];
   por_produto: AgregadoProduto[];
@@ -182,28 +182,7 @@ export async function agregarPeriodo(
   const { where, params } = consulta(inicio, fim, loja);
   const lojaSql = sqlLojaComercial();
 
-  // #region agent log
-  fetch("http://127.0.0.1:7309/ingest/575c6c50-3882-403b-b545-8aa6d2cf06b7", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "ddd25e" },
-    body: JSON.stringify({
-      sessionId: "ddd25e",
-      hypothesisId: "A",
-      location: "comparativoRepository.ts:agregarPeriodo",
-      message: "CASE comercial usado pelo comparativo",
-      data: {
-        inicio,
-        fim,
-        inclui4956955: lojaSql.includes("4956955"),
-        inclui13824425: lojaSql.includes("13824425"),
-        caseSql: lojaSql,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
-  const [total, porLoja, porDia, porHora, porGrupo, porSecao, porFornecedor, porProduto] =
+  const [total, porLoja, porDia, porHora, porSubgrupo, porSecao, porFornecedor, porProduto] =
     await Promise.all([
       get<MetricasPeriodo>(`SELECT ${METRICAS} FROM vendas ${where}`, params),
       all<AgregadoLoja>(
@@ -247,15 +226,15 @@ export async function agregarPeriodo(
         `,
         params
       ),
-      all<AgregadoGrupo>(
+      all<AgregadoSubgrupo>(
         `
           SELECT
-            codigo_grupo,
-            MAX(nome_grupo) AS nome_grupo,
+            codigo_subgrupo,
+            MAX(nome_subgrupo) AS nome_subgrupo,
             ${METRICAS}
           FROM vendas
           ${where}
-          GROUP BY codigo_grupo
+          GROUP BY codigo_subgrupo
         `,
         params
       ),
@@ -297,30 +276,6 @@ export async function agregarPeriodo(
       ),
     ]);
 
-  // #region agent log
-  const codigosBrutos = await all<{ codigo_loja: number; nome_loja: string; n: number }>(
-    `SELECT codigo_loja, nome_loja, COUNT(*) AS n FROM vendas ${where} GROUP BY codigo_loja, nome_loja`,
-    params
-  );
-  fetch("http://127.0.0.1:7309/ingest/575c6c50-3882-403b-b545-8aa6d2cf06b7", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "ddd25e" },
-    body: JSON.stringify({
-      sessionId: "ddd25e",
-      hypothesisId: "B",
-      location: "comparativoRepository.ts:agregarPeriodo",
-      message: "codigo_loja e nome cru no periodo",
-      data: {
-        inicio,
-        fim,
-        lojas: codigosBrutos,
-        nomesAgregados: porLoja.map((item) => item.loja),
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
   return {
     total: total ?? {
       faturamento: 0,
@@ -331,7 +286,7 @@ export async function agregarPeriodo(
     por_loja: porLoja,
     por_dia: porDia,
     por_hora: porHora,
-    por_grupo: porGrupo,
+    por_subgrupo: porSubgrupo,
     por_secao: porSecao,
     por_fornecedor: porFornecedor,
     por_produto: porProduto,

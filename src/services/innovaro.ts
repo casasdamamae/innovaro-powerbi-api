@@ -30,7 +30,7 @@ export async function buscarVendas(data: string): Promise<ResultadoInnovaro> {
         Authorization: `Bearer ${env.token}`,
         Accept: "application/json",
       },
-      timeout: 120000,
+      timeout: 240000,
     });
 
     const tempo = Number(((Date.now() - inicio) / 1000).toFixed(1));

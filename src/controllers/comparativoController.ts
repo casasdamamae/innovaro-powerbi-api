@@ -24,8 +24,6 @@ export async function obterComparativo(req: Request, res: Response): Promise<voi
     const resultado = await montarComparativo(
       {
         modo: asString(req.query.modo),
-        inicio: asString(req.query.inicio),
-        fim: asString(req.query.fim),
         loja: asString(req.query.loja),
       },
       req.usuario

@@ -148,9 +148,9 @@ export interface DesvioHora extends DesvioComparativo {
   hora: number;
 }
 
-export interface DesvioGrupo extends DesvioComparativo {
-  codigo_grupo: number;
-  nome_grupo: string;
+export interface DesvioSubgrupo extends DesvioComparativo {
+  codigo_subgrupo: number;
+  nome_subgrupo: string;
 }
 
 export interface DesvioSecao extends DesvioComparativo {
@@ -173,7 +173,7 @@ export interface DesviosComparativo {
   por_loja: DesvioLoja[];
   por_dia: DesvioDia[];
   por_hora: DesvioHora[];
-  por_grupo: DesvioGrupo[];
+  por_subgrupo: DesvioSubgrupo[];
   por_secao: DesvioSecao[];
   por_fornecedor: DesvioFornecedor[];
   por_produto: DesvioProduto[];

@@ -2,19 +2,19 @@ import {
   agregarPeriodo,
   listarLinhasComparativo,
   type AgregadoFornecedor,
-  type AgregadoGrupo,
   type AgregadoProduto,
   type AgregadoSecao,
+  type AgregadoSubgrupo,
   type AgregadosPeriodo,
 } from "../repositories/comparativoRepository.js";
 import type {
   ComparativoResponse,
   DesvioComparativo,
   DesvioFornecedor,
-  DesvioGrupo,
   DesvioLoja,
   DesvioProduto,
   DesvioSecao,
+  DesvioSubgrupo,
   JwtPayload,
   MetricasPeriodo,
   ModoComparativo,
@@ -86,6 +86,21 @@ function inicioDoMes(iso: string): string {
   return `${partes.y}-${String(partes.m).padStart(2, "0")}-01`;
 }
 
+function mesmoDiaAnoAnterior(iso: string): string {
+  const partes = dataCalendario(iso);
+  if (!partes) {
+    throw new ComparativoInvalido("Datas devem estar no formato YYYY-MM-DD.");
+  }
+
+  const mes = String(partes.m).padStart(2, "0");
+  const dia = String(partes.d).padStart(2, "0");
+  const candidato = `${partes.y - 1}-${mes}-${dia}`;
+
+  if (dataCalendario(candidato)) return candidato;
+
+  return `${partes.y - 1}-${mes}-28`;
+}
+
 function listarDias(inicio: string, fim: string): string[] {
   const dias: string[] = [];
   let cursor = inicio;
@@ -114,8 +129,6 @@ function resolverLoja(queryLoja: string | undefined, usuario: JwtPayload): strin
 
 export function resolverPeriodo(
   modo: string | undefined,
-  inicioQuery: string | undefined,
-  fimQuery: string | undefined,
   hoje = hojeSaoPaulo()
 ): { modo: ModoComparativo; inicio: string; fim: string } {
   if (modo !== "dia" && modo !== "acumulado") {
@@ -126,42 +139,7 @@ export function resolverPeriodo(
     return { modo, inicio: hoje, fim: hoje };
   }
 
-  let inicio: string;
-  let fim: string;
-
-  if (!inicioQuery && !fimQuery) {
-    inicio = inicioDoMes(hoje);
-    fim = hoje;
-  } else if (inicioQuery && !fimQuery) {
-    inicio = inicioQuery;
-    fim = inicioQuery;
-  } else if (!inicioQuery && fimQuery) {
-    inicio = fimQuery;
-    fim = fimQuery;
-  } else {
-    inicio = inicioQuery as string;
-    fim = fimQuery as string;
-  }
-
-  if (!dataCalendario(inicio) || !dataCalendario(fim)) {
-    throw new ComparativoInvalido("Datas devem estar no formato YYYY-MM-DD.");
-  }
-
-  const anoVigente = hoje.slice(0, 4);
-
-  if (inicio.slice(0, 4) !== anoVigente || fim.slice(0, 4) !== anoVigente) {
-    throw new ComparativoInvalido("O intervalo deve estar no ano vigente.");
-  }
-
-  if (inicio > fim) {
-    throw new ComparativoInvalido("A data inicial não pode ser maior que a final.");
-  }
-
-  if (fim > hoje) {
-    throw new ComparativoInvalido("A data final não pode ser futura.");
-  }
-
-  return { modo, inicio, fim };
+  return { modo, inicio: inicioDoMes(hoje), fim: hoje };
 }
 
 function numero(valor: unknown): number {
@@ -214,24 +192,6 @@ function parearLojas(vigente: AgregadosPeriodo, anterior: AgregadosPeriodo): Des
   );
   const nomes = new Set([...mapaVigente.keys(), ...mapaAnterior.keys()]);
 
-  // #region agent log
-  fetch("http://127.0.0.1:7309/ingest/575c6c50-3882-403b-b545-8aa6d2cf06b7", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "ddd25e" },
-    body: JSON.stringify({
-      sessionId: "ddd25e",
-      hypothesisId: "C",
-      location: "comparativoService.ts:parearLojas",
-      message: "nomes pareados no desvio por loja",
-      data: {
-        vigentes: [...mapaVigente.keys()],
-        anteriores: [...mapaAnterior.keys()],
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
   return [...nomes]
     .map((loja) => ({
       loja,
@@ -243,7 +203,13 @@ function parearLojas(vigente: AgregadosPeriodo, anterior: AgregadosPeriodo): Des
     .sort((a, b) => b.vigente.faturamento - a.vigente.faturamento);
 }
 
-function parearDias(inicio: string, fim: string, vigente: AgregadosPeriodo, anterior: AgregadosPeriodo) {
+function parearDias(
+  inicio: string,
+  fim: string,
+  vigente: AgregadosPeriodo,
+  anterior: AgregadosPeriodo,
+  dataAnteriorDe: (dataVigente: string) => string
+) {
   const mapaVigente = new Map(
     vigente.por_dia.map((item) => [item.data_venda, metricas(item)])
   );
@@ -252,7 +218,7 @@ function parearDias(inicio: string, fim: string, vigente: AgregadosPeriodo, ante
   );
 
   return listarDias(inicio, fim).map((dataVigente) => {
-    const dataAnterior = somarDias(dataVigente, -DIAS_MESMO_DIA_SEMANA);
+    const dataAnterior = dataAnteriorDe(dataVigente);
 
     return {
       data_vigente: dataVigente,
@@ -314,17 +280,22 @@ function parearCodigoNome<T extends MetricasPeriodo>(
     .sort((a, b) => b.vigente.faturamento - a.vigente.faturamento);
 }
 
-function parearGrupos(vigente: AgregadosPeriodo, anterior: AgregadosPeriodo): DesvioGrupo[] {
+function parearSubgrupos(
+  vigente: AgregadosPeriodo,
+  anterior: AgregadosPeriodo
+): DesvioSubgrupo[] {
   return parearCodigoNome(
-    vigente.por_grupo,
-    anterior.por_grupo,
-    (item: AgregadoGrupo) => numero(item.codigo_grupo),
-    (item: AgregadoGrupo) => texto(item.nome_grupo)
-  ).map(({ codigo, nome, ...resto }) => ({
-    codigo_grupo: codigo,
-    nome_grupo: nome,
-    ...resto,
-  }));
+    vigente.por_subgrupo,
+    anterior.por_subgrupo,
+    (item: AgregadoSubgrupo) => numero(item.codigo_subgrupo),
+    (item: AgregadoSubgrupo) => texto(item.nome_subgrupo)
+  )
+    .slice(0, 15)
+    .map(({ codigo, nome, ...resto }) => ({
+      codigo_subgrupo: codigo,
+      nome_subgrupo: nome,
+      ...resto,
+    }));
 }
 
 function parearSecoes(vigente: AgregadosPeriodo, anterior: AgregadosPeriodo): DesvioSecao[] {
@@ -375,16 +346,18 @@ function parearProdutos(
 export async function montarComparativo(
   entrada: {
     modo?: string;
-    inicio?: string;
-    fim?: string;
     loja?: string;
   },
   usuario: JwtPayload
 ): Promise<ComparativoResponse> {
-  const periodo = resolverPeriodo(entrada.modo, entrada.inicio, entrada.fim);
+  const periodo = resolverPeriodo(entrada.modo);
   const loja = resolverLoja(entrada.loja, usuario);
-  const inicioAnterior = somarDias(periodo.inicio, -DIAS_MESMO_DIA_SEMANA);
-  const fimAnterior = somarDias(periodo.fim, -DIAS_MESMO_DIA_SEMANA);
+  const dataAnteriorDe =
+    periodo.modo === "acumulado"
+      ? mesmoDiaAnoAnterior
+      : (iso: string) => somarDias(iso, -DIAS_MESMO_DIA_SEMANA);
+  const inicioAnterior = dataAnteriorDe(periodo.inicio);
+  const fimAnterior = dataAnteriorDe(periodo.fim);
 
   const [linhasVigente, linhasAnterior, agregadoVigente, agregadoAnterior] =
     await Promise.all([
@@ -406,9 +379,15 @@ export async function montarComparativo(
     desvios: {
       total: desvio(metricas(agregadoVigente.total), metricas(agregadoAnterior.total)),
       por_loja: parearLojas(agregadoVigente, agregadoAnterior),
-      por_dia: parearDias(periodo.inicio, periodo.fim, agregadoVigente, agregadoAnterior),
+      por_dia: parearDias(
+        periodo.inicio,
+        periodo.fim,
+        agregadoVigente,
+        agregadoAnterior,
+        dataAnteriorDe
+      ),
       por_hora: parearHoras(agregadoVigente, agregadoAnterior),
-      por_grupo: parearGrupos(agregadoVigente, agregadoAnterior),
+      por_subgrupo: parearSubgrupos(agregadoVigente, agregadoAnterior),
       por_secao: parearSecoes(agregadoVigente, agregadoAnterior),
       por_fornecedor: parearFornecedores(agregadoVigente, agregadoAnterior),
       por_produto: parearProdutos(agregadoVigente, agregadoAnterior),
