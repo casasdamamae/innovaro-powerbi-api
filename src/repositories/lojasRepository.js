@@ -53,7 +53,7 @@ export function obterLojas(inicio, fim, loja, fornecedor, setor) {
                         WHEN codigo_loja IN (3558633,3558624)
                             THEN 'Casa da Mamãe Taboão'
 
-                        WHEN codigo_loja = 2176059
+                        WHEN codigo_loja IN (2176059, 4956955)
                             THEN 'Casa da Mamãe São Mateus'
 
                         WHEN codigo_loja = 24829
@@ -68,7 +68,7 @@ export function obterLojas(inicio, fim, loja, fornecedor, setor) {
                         WHEN codigo_loja = 68722033
                             THEN 'Melhor das Casas Bonsucesso'
 
-                        WHEN codigo_loja = 49127607
+                        WHEN codigo_loja IN (49127607, 13824425)
                             THEN 'Melhor das Casas Carioca'
 
                         WHEN codigo_loja = 302403545

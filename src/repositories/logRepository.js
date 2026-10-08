@@ -51,3 +51,34 @@ export function salvarLog(data, registros, tempo, status, mensagem = "") {
     });
 
 }
+
+export function diaJaSincronizado(data) {
+
+    return new Promise((resolve, reject) => {
+
+        db.get(
+
+            `
+            SELECT 1 AS ok
+            FROM log_sincronizacao
+            WHERE data_sincronizada = ?
+              AND status = 'OK'
+            LIMIT 1
+            `,
+
+            [data],
+
+            (err, row) => {
+
+                if (err)
+                    return reject(err);
+
+                resolve(Boolean(row));
+
+            }
+
+        );
+
+    });
+
+}
